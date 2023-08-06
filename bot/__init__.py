@@ -36,26 +36,19 @@ load_dotenv('config.env', override=True)
 Interval = []
 QbInterval = []
 QbTorrents = {}
-DRIVES_NAMES = []
-DRIVES_IDS = []
-INDEX_URLS = []
 GLOBAL_EXTENSION_FILTER = ['aria2', '!qB']
 user_data = {}
 extra_buttons = {}
-shorteneres_list = []
+list_drives_dict = {}
+shorteners_list = []
+categories_dict = {}
 aria2_options = {}
 qbit_options = {}
 queued_dl = {}
 queued_up = {}
+bot_cache = {}
 non_queued_dl = set()
 non_queued_up = set()
-
-
-def get_version():
-    MAJOR = '1'
-    MINOR = '1'
-    PATCH = '4'
-    return f"v{MAJOR}.{MINOR}.{PATCH}-x"
 
 
 try:
@@ -182,6 +175,11 @@ if len(SUDO_USERS) != 0:
     aid = SUDO_USERS.split()
     for id_ in aid:
         user_data[int(id_.strip())] = {'is_sudo': True}
+        
+BLACKLIST_USERS = environ.get('BLACKLIST_USERS', '')
+if len(BLACKLIST_USERS) != 0:
+    for id_ in BLACKLIST_USERS.split():
+        user_data[int(id_.strip())] = {'is_blacklist': True}
 
 EXTENSION_FILTER = environ.get('EXTENSION_FILTER', '')
 if len(EXTENSION_FILTER) > 0:
@@ -213,6 +211,14 @@ if len(MEGA_EMAIL) == 0 or len(MEGA_PASSWORD) == 0:
 UPTOBOX_TOKEN = environ.get('UPTOBOX_TOKEN', '')
 if len(UPTOBOX_TOKEN) == 0:
     UPTOBOX_TOKEN = ''
+    
+GDTOT_CRYPT = environ.get('GDTOT_CRYPT', '')
+if len(GDTOT_CRYPT) == 0:
+    GDTOT_CRYPT = ''
+
+DEBRID_API_KEY = environ.get('DEBRID_API_KEY', '')
+if len(DEBRID_API_KEY) == 0:
+    DEBRID_API_KEY = ''
 
 INDEX_URL = environ.get('INDEX_URL', '').rstrip("/")
 if len(INDEX_URL) == 0:
@@ -261,7 +267,7 @@ if len(SEARCH_PLUGINS) == 0:
 MAX_SPLIT_SIZE = 4194304000 if IS_PREMIUM_USER else 2097152000
 
 LEECH_SPLIT_SIZE = environ.get('LEECH_SPLIT_SIZE', '')
-if len(LEECH_SPLIT_SIZE) == 0 or int(LEECH_SPLIT_SIZE) > MAX_SPLIT_SIZE:
+if str(LEECH_SPLIT_SIZE) in ["4194304000", "2097152000"] or len(LEECH_SPLIT_SIZE) == 0 or int(LEECH_SPLIT_SIZE) > MAX_SPLIT_SIZE:
     LEECH_SPLIT_SIZE = MAX_SPLIT_SIZE
 else:
     LEECH_SPLIT_SIZE = int(LEECH_SPLIT_SIZE)
@@ -287,9 +293,6 @@ if len(YT_DLP_OPTIONS) == 0:
 
 SEARCH_LIMIT = environ.get('SEARCH_LIMIT', '')
 SEARCH_LIMIT = 0 if len(SEARCH_LIMIT) == 0 else int(SEARCH_LIMIT)
-
-LEECH_LOG_ID = environ.get('LEECH_LOG_ID', '')
-LEECH_LOG_ID = '' if len(LEECH_LOG_ID) == 0 else int(LEECH_LOG_ID)
 
 STATUS_LIMIT = environ.get('STATUS_LIMIT', '')
 STATUS_LIMIT = 6 if len(STATUS_LIMIT) == 0 else int(STATUS_LIMIT)
@@ -331,6 +334,12 @@ WEB_PINCODE = WEB_PINCODE.lower() == 'true'
 
 AS_DOCUMENT = environ.get('AS_DOCUMENT', '')
 AS_DOCUMENT = AS_DOCUMENT.lower() == 'true'
+
+USER_TD_MODE = environ.get('USER_TD_MODE', '')
+USER_TD_MODE = USER_TD_MODE.lower() == 'true'
+
+USER_TD_SA = environ.get('USER_TD_SA', '')
+USER_TD_SA = USER_TD_SA.lower() if len(USER_TD_SA) != 0 else ''
 
 SHOW_MEDIAINFO = environ.get('SHOW_MEDIAINFO', '')
 SHOW_MEDIAINFO = SHOW_MEDIAINFO.lower() == 'true'
@@ -380,8 +389,7 @@ if len(RCLONE_SERVE_PASS) == 0:
     RCLONE_SERVE_PASS = ''
 
 STORAGE_THRESHOLD = environ.get('STORAGE_THRESHOLD', '')
-STORAGE_THRESHOLD = '' if len(
-    STORAGE_THRESHOLD) == 0 else float(STORAGE_THRESHOLD)
+STORAGE_THRESHOLD = '' if len(STORAGE_THRESHOLD) == 0 else float(STORAGE_THRESHOLD)
 
 TORRENT_LIMIT = environ.get('TORRENT_LIMIT', '')
 TORRENT_LIMIT = '' if len(TORRENT_LIMIT) == 0 else float(TORRENT_LIMIT)
@@ -405,7 +413,10 @@ LEECH_LIMIT = environ.get('LEECH_LIMIT', '')
 LEECH_LIMIT = '' if len(LEECH_LIMIT) == 0 else float(LEECH_LIMIT)
 
 USER_MAX_TASKS = environ.get('USER_MAX_TASKS', '')
-USER_MAX_TASKS = '' if len(USER_MAX_TASKS) == 0 else int(USER_MAX_TASKS)
+USER_MAX_TASKS = int(USER_MAX_TASKS) if USER_MAX_TASKS.isdigit() else ''
+
+USER_TIME_INTERVAL = environ.get('USER_TIME_INTERVAL', '')
+USER_TIME_INTERVAL = int(USER_TIME_INTERVAL) if USER_TIME_INTERVAL.isdigit() else 0
 
 PLAYLIST_LIMIT = environ.get('PLAYLIST_LIMIT', '')
 PLAYLIST_LIMIT = '' if len(PLAYLIST_LIMIT) == 0 else int(PLAYLIST_LIMIT)
@@ -413,10 +424,21 @@ PLAYLIST_LIMIT = '' if len(PLAYLIST_LIMIT) == 0 else int(PLAYLIST_LIMIT)
 FSUB_IDS = environ.get('FSUB_IDS', '')
 if len(FSUB_IDS) == 0:
     FSUB_IDS = ''
+    
+LINKS_LOG_ID = environ.get('LINKS_LOG_ID', '')
+LINKS_LOG_ID = '' if len(LINKS_LOG_ID) == 0 else int(LINKS_LOG_ID)
 
 MIRROR_LOG_ID = environ.get('MIRROR_LOG_ID', '')
 if len(MIRROR_LOG_ID) == 0:
     MIRROR_LOG_ID = ''
+    
+LEECH_LOG_ID = environ.get('LEECH_LOG_ID', '')
+if len(LEECH_LOG_ID) == 0:
+    LEECH_LOG_ID = ''
+    
+EXCEP_CHATS = environ.get('EXCEP_CHATS', '')
+if len(EXCEP_CHATS) == 0:
+    EXCEP_CHATS = ''
 
 BOT_PM = environ.get('BOT_PM', '')
 BOT_PM = BOT_PM.lower() == 'true'
@@ -462,7 +484,11 @@ if len(AUTHOR_URL) == 0:
 
 TITLE_NAME = environ.get('TITLE_NAME', '')
 if len(TITLE_NAME) == 0:
-    TITLE_NAME = 'WZ M/L X'
+    TITLE_NAME = 'WZ-M/L-X'
+    
+COVER_IMAGE = environ.get('COVER_IMAGE', '')
+if len(COVER_IMAGE) == 0:
+    COVER_IMAGE = 'https://graph.org/file/60f9f8bcb97d27f76f5c0.jpg'
 
 GD_INFO = environ.get('GD_INFO', '')
 if len(GD_INFO) == 0:
@@ -476,6 +502,12 @@ SAFE_MODE = SAFE_MODE.lower() == 'true'
 
 SET_COMMANDS = environ.get('SET_COMMANDS', '')
 SET_COMMANDS = SET_COMMANDS.lower() == 'true'
+
+CLEAN_LOG_MSG = environ.get('CLEAN_LOG_MSG', '')
+CLEAN_LOG_MSG = CLEAN_LOG_MSG.lower() == 'true'
+    
+SHOW_EXTRA_CMDS = environ.get('SHOW_EXTRA_CMDS', '')
+SHOW_EXTRA_CMDS = SHOW_EXTRA_CMDS.lower() == 'true'
 
 TOKEN_TIMEOUT = environ.get('TOKEN_TIMEOUT', '')
 TOKEN_TIMEOUT = int(TOKEN_TIMEOUT) if TOKEN_TIMEOUT.isdigit() else ''
@@ -538,11 +570,13 @@ config_dict = {'ANIME_TEMPLATE': ANIME_TEMPLATE,
                'AUTO_DELETE_MESSAGE_DURATION': AUTO_DELETE_MESSAGE_DURATION,
                'BASE_URL': BASE_URL,
                'BASE_URL_PORT': BASE_URL_PORT,
+               'BLACKLIST_USERS': BLACKLIST_USERS,
                'BOT_TOKEN': BOT_TOKEN,
                'BOT_MAX_TASKS': BOT_MAX_TASKS,
                'CAP_FONT': CAP_FONT,
                'CMD_SUFFIX': CMD_SUFFIX,
                'DATABASE_URL': DATABASE_URL,
+               'DEBRID_API_KEY': DEBRID_API_KEY,
                'DELETE_LINKS': DELETE_LINKS,
                'DEFAULT_UPLOAD': DEFAULT_UPLOAD,
                'DOWNLOAD_DIR': DOWNLOAD_DIR,
@@ -556,12 +590,15 @@ config_dict = {'ANIME_TEMPLATE': ANIME_TEMPLATE,
                'LEECH_LIMIT': LEECH_LIMIT,
                'FSUB_IDS': FSUB_IDS,
                'USER_MAX_TASKS': USER_MAX_TASKS,
+               'USER_TIME_INTERVAL': USER_TIME_INTERVAL,
                'PLAYLIST_LIMIT': PLAYLIST_LIMIT,
                'DAILY_TASK_LIMIT': DAILY_TASK_LIMIT,
                'DAILY_MIRROR_LIMIT': DAILY_MIRROR_LIMIT,
                'DAILY_LEECH_LIMIT': DAILY_LEECH_LIMIT,
                'MIRROR_LOG_ID': MIRROR_LOG_ID,
                'LEECH_LOG_ID': LEECH_LOG_ID,
+               'LINKS_LOG_ID': LINKS_LOG_ID,
+               'EXCEP_CHATS': EXCEP_CHATS,
                'BOT_PM': BOT_PM,
                'DISABLE_DRIVE_LINK': DISABLE_DRIVE_LINK,
                'BOT_THEME': BOT_THEME,
@@ -571,9 +608,11 @@ config_dict = {'ANIME_TEMPLATE': ANIME_TEMPLATE,
                'IMDB_TEMPLATE': IMDB_TEMPLATE,
                'AUTHOR_NAME': AUTHOR_NAME,
                'AUTHOR_URL': AUTHOR_URL,
+               'COVER_IMAGE': COVER_IMAGE,
                'TITLE_NAME': TITLE_NAME,
                'TIMEZONE': TIMEZONE,
                'GD_INFO': GD_INFO,
+               'GDTOT_CRYPT': GDTOT_CRYPT,
                'EQUAL_SPLITS': EQUAL_SPLITS,
                'EXTENSION_FILTER': EXTENSION_FILTER,
                'GDRIVE_ID': GDRIVE_ID,
@@ -613,6 +652,8 @@ config_dict = {'ANIME_TEMPLATE': ANIME_TEMPLATE,
                'SEARCH_PLUGINS': SEARCH_PLUGINS,
                'SET_COMMANDS': SET_COMMANDS,
                'SHOW_MEDIAINFO': SHOW_MEDIAINFO,
+               'CLEAN_LOG_MSG': CLEAN_LOG_MSG,
+               'SHOW_EXTRA_CMDS': SHOW_EXTRA_CMDS,
                'SOURCE_LINK': SOURCE_LINK,
                'STATUS_LIMIT': STATUS_LIMIT,
                'STATUS_UPDATE_INTERVAL': STATUS_UPDATE_INTERVAL,
@@ -625,36 +666,43 @@ config_dict = {'ANIME_TEMPLATE': ANIME_TEMPLATE,
                'UPSTREAM_BRANCH': UPSTREAM_BRANCH,
                'UPTOBOX_TOKEN': UPTOBOX_TOKEN,
                'USER_SESSION_STRING': USER_SESSION_STRING,
+               'USER_TD_MODE':USER_TD_MODE,
+               'USER_TD_SA': USER_TD_SA,
                'USE_SERVICE_ACCOUNTS': USE_SERVICE_ACCOUNTS,
                'WEB_PINCODE': WEB_PINCODE,
                'YT_DLP_OPTIONS': YT_DLP_OPTIONS}
 
 if GDRIVE_ID:
-    DRIVES_NAMES.append("Main")
-    DRIVES_IDS.append(GDRIVE_ID)
-    INDEX_URLS.append(INDEX_URL)
+    list_drives_dict['Main'] = {"drive_id": GDRIVE_ID, "index_link": INDEX_URL}
+    categories_dict['Root'] = {"drive_id": GDRIVE_ID, "index_link": INDEX_URL}
 
 if ospath.exists('list_drives.txt'):
     with open('list_drives.txt', 'r+') as f:
         lines = f.readlines()
         for line in lines:
-            temp = line.strip().split()
-            DRIVES_IDS.append(temp[1])
-            DRIVES_NAMES.append(temp[0].replace("_", " "))
-            if len(temp) > 2:
-                INDEX_URLS.append(temp[2])
-            else:
-                INDEX_URLS.append('')
+            sep = 2 if line.strip().split()[-1].startswith('http') else 1
+            temp = line.strip().rsplit(maxsplit=sep)
+            name = "Main Custom" if temp[0].casefold() == "Main" else temp[0]
+            list_drives_dict[name] = {'drive_id': temp[1], 'index_link': (temp[2] if sep == 2 else '')}
+
+if ospath.exists('categories.txt'):
+    with open('categories.txt', 'r+') as f:
+        lines = f.readlines()
+        for line in lines:
+            sep = 2 if line.strip().split()[-1].startswith('http') else 1
+            temp = line.strip().rsplit(maxsplit=sep)
+            name = "Root Custom" if temp[0].casefold() == "Root" else temp[0]
+            categories_dict[name] = {'drive_id': temp[1], 'index_link': (temp[2] if sep == 2 else '')}
 
 if ospath.exists('buttons.txt'):
     with open('buttons.txt', 'r+') as f:
         lines = f.readlines()
         for line in lines:
-            temp = line.strip().split()
-            if len(extra_buttons.keys()) >= 6:
+            temp = line.strip().rsplit(maxsplit=1)
+            if len(extra_buttons.keys()) >= 20:
                 break
-            if len(temp) == 2:
-                extra_buttons[temp[0].replace("_", " ")] = temp[1]
+            elif temp[1].startswith('http'):
+                extra_buttons[temp[0]] = temp[1]
 
 if ospath.exists('shorteners.txt'):
     with open('shorteners.txt', 'r+') as f:
@@ -662,7 +710,7 @@ if ospath.exists('shorteners.txt'):
         for line in lines:
             temp = line.strip().split()
             if len(temp) == 2:
-                shorteneres_list.append({'domain': temp[0],'api_key': temp[1]})
+                shorteners_list.append({'domain': temp[0],'api_key': temp[1]})
 
 if BASE_URL:
     Popen(f"gunicorn web.wserver:app --bind 0.0.0.0:{BASE_URL_PORT} --worker-class gevent", shell=True)
